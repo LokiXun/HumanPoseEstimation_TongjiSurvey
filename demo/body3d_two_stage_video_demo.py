@@ -4,6 +4,9 @@ import os
 import os.path as osp
 import warnings
 from argparse import ArgumentParser
+from pathlib import Path
+import sys
+sys.path.append(Path(__file__).resolve().parent.parent.as_posix())
 
 import cv2
 import mmcv
@@ -16,6 +19,8 @@ from mmpose.apis import (collect_multi_frames, extract_pose_sequence,
 from mmpose.core import Smoother
 from mmpose.datasets import DatasetInfo
 from mmpose.models import PoseLifter, TopDown
+
+base_path = Path(__file__).resolve().parent.parent
 
 try:
     from mmdet.apis import inference_detector, init_detector
@@ -283,7 +288,7 @@ def main():
     assert args.det_config is not None
     assert args.det_checkpoint is not None
 
-    video = mmcv.VideoReader(args.video_path)
+    video = mmcv.VideoReader(base_path.joinpath(args.video_path).as_posix())
     assert video.opened, f'Failed to load video file {args.video_path}'
 
     # First stage: 2D pose detection

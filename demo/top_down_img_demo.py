@@ -2,6 +2,7 @@
 import os
 import warnings
 from argparse import ArgumentParser
+from pathlib import Path
 
 import mmcv
 from xtcocotools.coco import COCO
@@ -10,6 +11,10 @@ from mmpose.apis import (inference_top_down_pose_model, init_pose_model,
                          vis_pose_result)
 from mmpose.datasets import DatasetInfo
 
+base_path = Path(__file__).resolve().parent.parent
+result_save_dir = base_path.joinpath("checkpoints/test_result")
+result_save_dir.mkdir(exist_ok=True, parents=True)
+
 
 def main():
     """Visualize the demo images.
@@ -17,13 +22,19 @@ def main():
     Require the json_file containing boxes.
     """
     parser = ArgumentParser()
-    parser.add_argument('pose_config', help='Config file for detection')
-    parser.add_argument('pose_checkpoint', help='Checkpoint file')
-    parser.add_argument('--img-root', type=str, default='', help='Image root')
+    parser.add_argument('--pose-config', help='Config file for detection',
+                        default=base_path.joinpath(
+                            'configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/'
+                            'hrnet_w48_coco_256x192.py').as_posix())
+    parser.add_argument('--pose-checkpoint', help='Checkpoint file',
+                        default=base_path.joinpath('checkpoints/hrnet_w48_coco_256x192-b9e0b3ab_20200708.pth').
+                        as_posix())
+    parser.add_argument('--img-root', type=str, default=base_path.joinpath('tests/data/coco/').as_posix(),
+                        help='Image root')
     parser.add_argument(
         '--json-file',
         type=str,
-        default='',
+        default=base_path.joinpath('tests/data/coco/test_coco.json').as_posix(),
         help='Json file containing image info.')
     parser.add_argument(
         '--show',
@@ -33,11 +44,11 @@ def main():
     parser.add_argument(
         '--out-img-root',
         type=str,
-        default='',
+        default=result_save_dir.as_posix(),
         help='Root of the output img file. '
-        'Default not saving the visualization images.')
+             'Default not saving the visualization images.')
     parser.add_argument(
-        '--device', default='cuda:0', help='Device used for inference')
+        '--device', default='cpu', help='Device used for inference')
     parser.add_argument(
         '--kpt-thr', type=float, default=0.3, help='Keypoint score threshold')
     parser.add_argument(

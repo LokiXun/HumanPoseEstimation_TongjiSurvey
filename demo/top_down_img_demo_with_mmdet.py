@@ -2,6 +2,10 @@
 import os
 import warnings
 from argparse import ArgumentParser
+from pathlib import Path
+import sys
+
+sys.path.append(Path(__file__).resolve().parent.parent.as_posix())
 
 from mmpose.apis import (inference_top_down_pose_model, init_pose_model,
                          process_mmdet_results, vis_pose_result)
@@ -9,9 +13,12 @@ from mmpose.datasets import DatasetInfo
 
 try:
     from mmdet.apis import inference_detector, init_detector
+
     has_mmdet = True
 except (ImportError, ModuleNotFoundError):
     has_mmdet = False
+
+base_path = Path(__file__).resolve().parent.parent
 
 
 def main():
@@ -20,12 +27,20 @@ def main():
     Using mmdet to detect the human.
     """
     parser = ArgumentParser()
-    parser.add_argument('det_config', help='Config file for detection')
-    parser.add_argument('det_checkpoint', help='Checkpoint file for detection')
-    parser.add_argument('pose_config', help='Config file for pose')
-    parser.add_argument('pose_checkpoint', help='Checkpoint file for pose')
-    parser.add_argument('--img-root', type=str, default='', help='Image root')
-    parser.add_argument('--img', type=str, default='', help='Image file')
+    parser.add_argument('--det_config', help='Config file for detection',
+                        default=base_path.joinpath("demo/mmdetection_cfg/faster_rcnn_r50_fpn_coco.py").as_posix())
+    parser.add_argument('--det_checkpoint', help='Checkpoint file for detection',
+                        default=base_path.joinpath("checkpoints/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth").
+                        as_posix())
+    parser.add_argument('--pose_config', help='Config file for pose',
+                        default=base_path.joinpath(
+                            "configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrnet_w48_coco_256x192.py").as_posix())
+    parser.add_argument('--pose_checkpoint', help='Checkpoint file for pose',
+                        default=base_path.joinpath(
+                            "checkpoints/hrnet_w48_coco_256x192-b9e0b3ab_20200708.pth --img-root checkpoints/").as_posix())
+    parser.add_argument('--img-root', type=str, default=base_path.joinpath('checkpoints/').as_posix(),
+                        help='Image root')
+    parser.add_argument('--img', type=str, default='kobe_sitting.jpg', help='Image file')
     parser.add_argument(
         '--show',
         action='store_true',
@@ -34,9 +49,9 @@ def main():
     parser.add_argument(
         '--out-img-root',
         type=str,
-        default='',
+        default=base_path.joinpath('checkpoints/test_result').as_posix(),
         help='root of the output img file. '
-        'Default not saving the visualization images.')
+             'Default not saving the visualization images.')
     parser.add_argument(
         '--device', default='cuda:0', help='Device used for inference')
     parser.add_argument(
@@ -88,7 +103,7 @@ def main():
         dataset_info = DatasetInfo(dataset_info)
 
     image_name = os.path.join(args.img_root, args.img)
-
+    print(f"image_name={image_name}")
     # test a single image, the resulting box is (x1, y1, x2, y2)
     mmdet_results = inference_detector(det_model, image_name)
 
@@ -113,6 +128,7 @@ def main():
         dataset_info=dataset_info,
         return_heatmap=return_heatmap,
         outputs=output_layer_names)
+    # pose_result -> List[{'bbox': array_1x5m 'keypoints': array_17x3(x,y,visible)}]
 
     if args.out_img_root == '':
         out_file = None
@@ -120,7 +136,7 @@ def main():
         os.makedirs(args.out_img_root, exist_ok=True)
         out_file = os.path.join(args.out_img_root, f'vis_{args.img}')
 
-    # show the results
+    # show the results >> <class 'mmpose.models.detectors.top_down.TopDown'>
     vis_pose_result(
         pose_model,
         image_name,

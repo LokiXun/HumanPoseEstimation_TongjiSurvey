@@ -2,7 +2,7 @@ _base_ = [
     '../../../../_base_/default_runtime.py',
     '../../../../_base_/datasets/coco.py'
 ]
-evaluation = dict(interval=10, metric='mAP', save_best='AP')
+evaluation = dict(interval=1, metric='mAP', save_best='AP')
 
 optimizer = dict(
     type='Adam',
@@ -16,7 +16,7 @@ lr_config = dict(
     warmup_iters=500,
     warmup_ratio=0.001,
     step=[170, 200])
-total_epochs = 210
+total_epochs = 2
 channel_cfg = dict(
     num_output_channels=17,
     dataset_joints=17,
@@ -30,8 +30,9 @@ channel_cfg = dict(
 # model settings
 model = dict(
     type='TopDown',
-    pretrained='https://download.openmmlab.com/mmpose/'
-    'pretrain_models/hrnet_w48-8ef0771d.pth',
+    # pretrained='https://download.openmmlab.com/mmpose/'
+    #            'pretrain_models/hrnet_w48-8ef0771d.pth',
+    # pretrained="checkpoints/hrnet_w48_coco_256x192-b9e0b3ab_20200708.pth",
     backbone=dict(
         type='HRNet',
         in_channels=3,
@@ -40,8 +41,8 @@ model = dict(
                 num_modules=1,
                 num_branches=1,
                 block='BOTTLENECK',
-                num_blocks=(4, ),
-                num_channels=(64, )),
+                num_blocks=(4,),
+                num_channels=(64,)),
             stage2=dict(
                 num_modules=1,
                 num_branches=2,
@@ -89,7 +90,7 @@ data_cfg = dict(
     use_gt_bbox=False,
     det_bbox_thr=0.0,
     bbox_file='data/coco/person_detection_results/'
-    'COCO_val2017_detections_AP_H_56_person.json',
+              'COCO_val2017_detections_AP_H_56_person.json',
 )
 
 train_pipeline = [
@@ -139,12 +140,12 @@ val_pipeline = [
 
 test_pipeline = val_pipeline
 
-data_root = 'data/coco'
+data_root = "C:/Users/Loki/workspace/Hobby_CVinternship/dataset_object_detection/coco2017"  # 'data/coco'
 data = dict(
-    samples_per_gpu=32,
-    workers_per_gpu=2,
-    val_dataloader=dict(samples_per_gpu=32),
-    test_dataloader=dict(samples_per_gpu=32),
+    samples_per_gpu=2,  # batch_size
+    workers_per_gpu=1,  # 2
+    val_dataloader=dict(samples_per_gpu=5),  # batch_size
+    test_dataloader=dict(samples_per_gpu=5),  # batch_size
     train=dict(
         type='TopDownCocoDataset',
         ann_file=f'{data_root}/annotations/person_keypoints_train2017.json',

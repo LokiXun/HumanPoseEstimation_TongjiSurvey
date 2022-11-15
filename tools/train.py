@@ -2,9 +2,17 @@
 import argparse
 import copy
 import os
+
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # "1,2,3"
 import os.path as osp
 import time
 import warnings
+from pathlib import Path
+import sys
+
+base_path = Path(__file__).resolve().parent.parent
+sys.path.append(base_path.as_posix())
 
 import mmcv
 import torch
@@ -12,6 +20,7 @@ import torch.distributed as dist
 from mmcv import Config, DictAction
 from mmcv.runner import get_dist_info, init_dist, set_random_seed
 from mmcv.utils import get_git_hash
+import wandb
 
 from mmpose import __version__
 from mmpose.apis import init_random_seed, train_model
@@ -22,36 +31,42 @@ from mmpose.utils import collect_env, get_root_logger, setup_multi_processes
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a pose model')
-    parser.add_argument('config', help='train config file path')
-    parser.add_argument('--work-dir', help='the dir to save logs and models')
+    parser.add_argument('--config',
+                        default=base_path.joinpath(
+                            "configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrnet_w48_coco_256x192.py").as_posix(),
+                        help='train config file path')
+    parser.add_argument('--work-dir', help='the dir to save logs and models',
+                        default=base_path.joinpath("checkpoints/exp/").as_posix())  # required=True)
     parser.add_argument(
         '--resume-from', help='the checkpoint file to resume from')
     parser.add_argument(
         '--no-validate',
-        action='store_true',
+        # action='store_true',
+        default=False,
         help='whether not to evaluate the checkpoint during training')
     group_gpus = parser.add_mutually_exclusive_group()
     group_gpus.add_argument(
         '--gpus',
         type=int,
         help='(Deprecated, please use --gpu-id) number of gpus to use '
-        '(only applicable to non-distributed training)')
+             '(only applicable to non-distributed training)')
     group_gpus.add_argument(
         '--gpu-ids',
         type=int,
         nargs='+',
         help='(Deprecated, please use --gpu-id) ids of gpus to use '
-        '(only applicable to non-distributed training)')
+             '(only applicable to non-distributed training)')
     group_gpus.add_argument(
         '--gpu-id',
         type=int,
         default=0,
         help='id of gpu to use '
-        '(only applicable to non-distributed training)')
+             '(only applicable to non-distributed training)')
     parser.add_argument('--seed', type=int, default=None, help='random seed')
     parser.add_argument(
         '--diff_seed',
-        action='store_true',
+        # action='store_true',
+        default=False,
         help='Whether or not set different seeds for different ranks')
     parser.add_argument(
         '--deterministic',
@@ -63,8 +78,8 @@ def parse_args():
         action=DictAction,
         default={},
         help='override some settings in the used config, the key-value pair '
-        'in xxx=yyy format will be merged into config file. For example, '
-        "'--cfg-options model.backbone.depth=18 model.backbone.with_cp=True'")
+             'in xxx=yyy format will be merged into config file. For example, '
+             "'--cfg-options model.backbone.depth=18 model.backbone.with_cp=True'")
     parser.add_argument(
         '--launcher',
         choices=['none', 'pytorch', 'slurm', 'mpi'],
@@ -75,6 +90,8 @@ def parse_args():
         '--autoscale-lr',
         action='store_true',
         help='automatically scale lr with the number of gpus')
+    parser.add_argument("--wandb", default=True, help="log with wandb")
+
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -86,6 +103,25 @@ def main():
     args = parse_args()
 
     cfg = Config.fromfile(args.config)
+    # modify bbox_file's path
+    cfg.data_cfg['bbox_file'] = base_path.joinpath(cfg.data_cfg['bbox_file']).as_posix()
+    if cfg.model.get('pretrained', None):
+        cfg.model['pretrained'] = base_path.joinpath(cfg.model['pretrained']).as_posix()
+    cfg.data.val.data_cfg = cfg.data_cfg
+    cfg.data.train.data_cfg = cfg.data_cfg
+    cfg.data.test.data_cfg = cfg.data_cfg
+    print(f"==========cfg.data_cfg['bbox_file']={cfg.data_cfg['bbox_file']}; "
+          f"cfg.data.val.data_cfg['bbox_file']={cfg.data.val.data_cfg['bbox_file']}")
+
+    timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+    if args.wandb:
+        model_type_str = f"{cfg.model.type}_{cfg.model.backbone.type}"
+        project_name = f"{timestamp}_{model_type_str}_{cfg.data.train.type}"
+        wandb.init(
+            project=model_type_str,
+            name=project_name,
+        )
+        print(f">>>>>>>wandb: model_type_str={model_type_str}, project_name={project_name}")
 
     if args.cfg_options is not None:
         cfg.merge_from_dict(args.cfg_options)
@@ -107,6 +143,7 @@ def main():
                                 osp.splitext(osp.basename(args.config))[0])
     if args.resume_from is not None:
         cfg.resume_from = args.resume_from
+    print(f"---------- cfg.resume_from={cfg.resume_from}")
     if args.gpus is not None:
         cfg.gpu_ids = range(1)
         warnings.warn('`--gpus` is deprecated because we only support '
@@ -144,7 +181,7 @@ def main():
     # create work_dir
     mmcv.mkdir_or_exist(osp.abspath(cfg.work_dir))
     # init the logger before other steps
-    timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+    # timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     log_file = osp.join(cfg.work_dir, f'{timestamp}.log')
     logger = get_root_logger(log_file=log_file, log_level=cfg.log_level)
 

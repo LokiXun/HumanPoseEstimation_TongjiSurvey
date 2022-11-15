@@ -6,6 +6,7 @@ import numpy as np
 from mmcv.image import imwrite
 from mmcv.utils.misc import deprecated_api_warning
 from mmcv.visualization.image import imshow
+import wandb
 
 from mmpose.core import imshow_bboxes, imshow_keypoints
 from .. import builder

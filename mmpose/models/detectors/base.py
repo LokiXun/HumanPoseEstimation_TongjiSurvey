@@ -5,6 +5,7 @@ from collections import OrderedDict
 import torch
 import torch.distributed as dist
 import torch.nn as nn
+import wandb
 
 
 class BasePose(nn.Module, metaclass=ABCMeta):
@@ -102,6 +103,10 @@ class BasePose(nn.Module, metaclass=ABCMeta):
                 averaging the logs.
         """
         losses = self.forward(**data_batch)
+        # record wandb
+        for loss_key_name_str in losses:
+            wandb.log({loss_key_name_str: losses[loss_key_name_str]})
+        wandb.log({"lr": optimizer.param_groups[0]['lr']})
 
         loss, log_vars = self._parse_losses(losses)
 
