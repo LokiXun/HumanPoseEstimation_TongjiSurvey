@@ -103,10 +103,13 @@ class BasePose(nn.Module, metaclass=ABCMeta):
                 averaging the logs.
         """
         losses = self.forward(**data_batch)
-        # record wandb
-        for loss_key_name_str in losses:
-            wandb.log({loss_key_name_str: losses[loss_key_name_str]})
-        wandb.log({"lr": optimizer.param_groups[0]['lr']})
+        try:
+            # record wandb
+            for loss_key_name_str in losses:
+                wandb.log({loss_key_name_str: losses[loss_key_name_str]})
+            wandb.log({"lr": optimizer.param_groups[0]['lr']})
+        except Exception as e:
+            print(f"ERROR!!!!!wandb not initialized! {e}")
 
         loss, log_vars = self._parse_losses(losses)
 

@@ -3,7 +3,7 @@ _base_ = [
     '../../../../_base_/datasets/coco.py'
 ]
 
-evaluation = dict(interval=10, metric='mAP', save_best='AP')
+evaluation = dict(interval=1, metric='mAP', save_best='AP')
 
 optimizer = dict(
     type='AdamW',
@@ -21,7 +21,7 @@ lr_config = dict(
     warmup_iters=500,
     warmup_ratio=0.001,
     step=[170, 200])
-total_epochs = 210
+total_epochs = 5
 log_config = dict(
     interval=50, hooks=[
         dict(type='TextLoggerHook'),
@@ -38,11 +38,12 @@ channel_cfg = dict(
     ])
 
 # model settings
-norm_cfg = dict(type='SyncBN', requires_grad=True)
+norm_cfg = dict(type='BN', requires_grad=True)  # WARNING: origin is SyncBN
 model = dict(
     type='TopDown',
-    pretrained='https://download.openmmlab.com/mmpose/'
-    'pretrain_models/hrformer_base-32815020_20220226.pth',
+    # pretrained='https://download.openmmlab.com/mmpose/'
+    # 'pretrain_models/hrformer_base-32815020_20220226.pth',
+    pretrained="checkpoints/hrformer_base-32815020_20220226.pth",
     backbone=dict(
         type='HRFormer',
         in_channels=3,
@@ -54,8 +55,8 @@ model = dict(
                 num_modules=1,
                 num_branches=1,
                 block='BOTTLENECK',
-                num_blocks=(2, ),
-                num_channels=(64, ),
+                num_blocks=(2,),
+                num_channels=(64,),
                 num_heads=[2],
                 mlp_ratios=[4]),
             stage2=dict(
@@ -99,7 +100,10 @@ model = dict(
         shift_heatmap=True,
         modulate_kernel=11))
 
+# Warning
 data_root = 'data/coco'
+data_root = "C:/Users/Loki/workspace/Hobby_CVinternship/dataset_object_detection/coco2017"  # WARNING: modify here
+
 data_cfg = dict(
     image_size=[192, 256],
     heatmap_size=[48, 64],
@@ -114,8 +118,10 @@ data_cfg = dict(
     use_gt_bbox=False,
     det_bbox_thr=0.0,
     bbox_file=f'{data_root}/person_detection_results/'
-    'COCO_val2017_detections_AP_H_56_person.json',
+              'COCO_val2017_detections_AP_H_56_person.json',
 )
+# Warning: overwrite bbox_file path
+data_cfg['bbox_file'] = 'data/coco/person_detection_results/COCO_val2017_detections_AP_H_56_person.json'
 
 train_pipeline = [
     dict(type='LoadImageFromFile'),
@@ -165,10 +171,10 @@ val_pipeline = [
 test_pipeline = val_pipeline
 
 data = dict(
-    samples_per_gpu=32,
+    samples_per_gpu=2,
     workers_per_gpu=2,
-    val_dataloader=dict(samples_per_gpu=32),
-    test_dataloader=dict(samples_per_gpu=32),
+    val_dataloader=dict(samples_per_gpu=5),
+    test_dataloader=dict(samples_per_gpu=5),
     train=dict(
         type='TopDownCocoDataset',
         ann_file=f'{data_root}/annotations/person_keypoints_train2017.json',

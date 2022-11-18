@@ -5,6 +5,7 @@ import os
 
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # "1,2,3"
+
 import os.path as osp
 import time
 import warnings
@@ -28,12 +29,17 @@ from mmpose.datasets import build_dataset
 from mmpose.models import build_posenet
 from mmpose.utils import collect_env, get_root_logger, setup_multi_processes
 
+# Note:
+model_config_py_filepath = "configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrformer_base_coco_256x192.py"
+
+
+# model_config_py_filepath = "configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrnet_w48_coco_256x192.py"
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a pose model')
     parser.add_argument('--config',
-                        default=base_path.joinpath(
-                            "configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/hrnet_w48_coco_256x192.py").as_posix(),
+                        default=base_path.joinpath(model_config_py_filepath).as_posix(),
                         help='train config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models',
                         default=base_path.joinpath("checkpoints/exp/").as_posix())  # required=True)
@@ -111,7 +117,8 @@ def main():
     cfg.data.train.data_cfg = cfg.data_cfg
     cfg.data.test.data_cfg = cfg.data_cfg
     print(f"==========cfg.data_cfg['bbox_file']={cfg.data_cfg['bbox_file']}; "
-          f"cfg.data.val.data_cfg['bbox_file']={cfg.data.val.data_cfg['bbox_file']}")
+          f"cfg.data.val.data_cfg['bbox_file']={cfg.data.val.data_cfg['bbox_file']}\n"
+          f"cfg.model['pretrained']={cfg.model['pretrained']}")
 
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     if args.wandb:

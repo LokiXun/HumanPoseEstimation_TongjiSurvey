@@ -8,6 +8,7 @@ import json_tricks as json
 import numpy as np
 from mmcv import Config, deprecated_api_warning
 from xtcocotools.cocoeval import COCOeval
+import wandb
 
 from ....core.post_processing import oks_nms, soft_oks_nms
 from ...builder import DATASETS
@@ -325,6 +326,13 @@ class TopDownCocoDataset(Kpt2dSviewRgbImgTopDownDataset):
         if 'annotations' in self.coco.dataset:
             info_str = self._do_python_keypoint_eval(res_file)
             name_value = OrderedDict(info_str)
+
+            # record val metric
+            try:
+                for metric_name_str in name_value:
+                    wandb.log({metric_name_str: name_value[metric_name_str]})
+            except Exception as e:
+                print(f"ERROR!!!!!!!! wandb not been initialized!")
 
             if tmp_folder is not None:
                 tmp_folder.cleanup()
